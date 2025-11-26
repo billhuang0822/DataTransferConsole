@@ -1,17 +1,41 @@
 <%@ page contentType="text/html; charset=UTF-8" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%
+  String cp = request.getContextPath();
+%>
 <html>
 <head>
-    <title>主控台</title>
+    <title>DataTransfer 控制台</title>
     <script>
       function startService(type){
-        fetch('/service/'+type+'/start', {method: 'POST'})
-          .then(resp=>resp.text())
-          .then(msg=>{
-            alert(msg);
-            location.reload();
+        fetch('<%=cp%>/service/'+type+'/start', {method: 'POST'})
+        .then(resp=>resp.text()).then(msg=>{
+          if(msg==='OK') alert('服務已啟動');
+          else alert('依賴未完成或不可執行');
+          refreshTable();
+        });
+      }
+      function refreshTable(){
+        fetch('<%=cp%>/status')
+          .then(resp=>resp.json())
+          .then(list=>{
+            let tbody = document.getElementById('statusBody');
+            tbody.innerHTML = '';
+            list.forEach(svc=>{
+              let row = `<tr>
+                <td>${svc.displayName}</td>
+                <td class="status-${svc.status}">${svc.status}</td>
+                <td>
+                  <button onclick="startService('${svc.type}')"
+                    ${svc.enabled==='true'?'':'disabled'}>執行</button>
+                </td>
+              </tr>`;
+              tbody.innerHTML += row;
+            });
           });
       }
+      setInterval(refreshTable, 5000);
+      window.onload=refreshTable;
     </script>
     <style>
       table { border-collapse: collapse; width: 60%; margin:auto;}
@@ -25,23 +49,12 @@
     </style>
 </head>
 <body>
-    <h2 style="text-align:center;">服務主控台</h2>
+    <h2 style="text-align:center;">DataTransfer控管台</h2>
     <table>
       <tr>
         <th>服務名稱</th><th>狀態</th><th>操作</th>
       </tr>
-      <c:forEach var="svc" items="${services}">
-        <tr>
-          <td>${svc.type}</td>
-          <td class="status-${svc.status}">${svc.status}</td>
-          <td>
-            <button 
-                onclick="startService('${svc.type}')"
-                <c:if test="${!serviceEnabled[svc.type]}">disabled</c:if>
-            >執行</button>
-          </td>
-        </tr>
-      </c:forEach>
+      <tbody id="statusBody"></tbody>
     </table>
 </body>
 </html>
