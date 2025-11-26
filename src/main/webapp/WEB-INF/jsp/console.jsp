@@ -7,6 +7,7 @@
 <head>
     <title>DataTransfer 控制台</title>
     <script>
+      let lostControl = false;
       function startService(type){
         fetch('<%=cp%>/service/'+type+'/start', {method: 'POST'})
         .then(resp=>resp.text()).then(msg=>{
@@ -34,8 +35,27 @@
             });
           });
       }
+      function refreshControlStatus() {
+        fetch('<%=cp%>/controller/status')
+          .then(resp=>resp.json()).then(res=>{
+            if(!res.isController) {
+              if(!lostControl) {
+                lostControl = true;
+                alert('已失去操控權，將跳轉至只讀頁');
+                window.location = '<%=cp%>/';
+              }
+            }
+          });
+      }
       setInterval(refreshTable, 5000);
-      window.onload=refreshTable;
+      setInterval(refreshControlStatus, 8000); // 定時令牌狀態心跳
+      window.onload=function(){
+        refreshTable();
+        refreshControlStatus();
+      };
+      window.onbeforeunload = function(){
+        fetch('<%=cp%>/controller/release', {method:'POST'});
+      };
     </script>
     <style>
       table { border-collapse: collapse; width: 60%; margin:auto;}
